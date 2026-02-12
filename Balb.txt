@@ -126,7 +126,7 @@ Section1:Button({
     Desc = "click to copy link",
     Callback = function()
         if setclipboard then
-            setclipboard("https://discord.gg/jdmX43t5mY")
+            setclipboard("memek")
         end
     end
 })
@@ -136,7 +136,7 @@ Section1:Button({
     Desc = "click to copy link",
     Callback = function()
         if setclipboard then
-            setclipboard("https://whatsapp.com/channel/0029VbAwRihKAwEtwyowt62N")
+            setclipboard("memek")
         end
     end
 })
@@ -730,4 +730,5 @@ Section5:Toggle({
     Callback = function(state)
         AntiAFK = state
     end
+
 })
