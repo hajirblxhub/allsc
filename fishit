@@ -2,8 +2,10 @@ local MacLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/bimora
 
 local Window = MacLib:Window({
     Title = "Noxius Hub",
-    Subtitle = "Noxius Communiy",
-    Size = UDim2.fromOffset(540, 400),
+    Subtitle = "Noxius Community",
+    Size = UDim2.fromOffset(450, 340),
+    AccentColor = Color3.fromRGB(140, 0, 255),
+    BackgroundColor = Color3.fromRGB(15, 5, 30),
     Keybind = Enum.KeyCode.RightShift,
     ShowUserInfo = true,
     DragStyle = 2
