@@ -2984,10 +2984,37 @@ Tab7:Button({
 })
 
 Tab7:Section({ 
-    Title = "Extreame Blatant",
+    Title = "Script Ga Guna",
     Icon = "file-code-corner",
     TextXAlignment = "Left",
     TextSize = 17,
 })
 
 Tab7:Divider()
+
+Tab7:Button({
+    Title = "FLY",
+    Desc = "Scripts Fly Gui",
+    Locked = false,
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
+    end
+})
+
+Tab7:Button({
+    Title = "Simple Shader",
+    Desc = "Shader",
+    Locked = false,
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/p0e1/1/refs/heads/main/SimpleShader.lua"))()
+    end
+})
+
+Tab7:Button({
+    Title = "Infinite Yield",
+    Desc = "Other Scripts",
+    Locked = false,
+    Callback = function()
+        loadstring(game:HttpGet('https://raw.githubusercontent.com/DarkNetworks/Infinite-Yield/main/latest.lua'))()
+    end
+})
