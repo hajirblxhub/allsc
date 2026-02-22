@@ -787,7 +787,7 @@ Tab3:Toggle({
             Text2.Position = UDim2.new(0.5, 0, 0.78, 0)
             Text2.Size = UDim2.new(0, 400, 0, 30)
             Text2.BackgroundTransparency = 1
-            Text2.Text = "TALON KONTOL"
+            Text2.Text = "discord.gg/jdmX43t5mY"
             Text2.TextColor3 = Color3.fromRGB(255, 255, 255)
             Text2.Font = Enum.Font.Gotham
             Text2.TextSize = 20
@@ -1279,7 +1279,7 @@ function sendTestWebhook()
 
     local payload = {
         username = "Noxius Webhook",
-        avatar_url = "https://cdn.discordapp.com/attachments/1452511323672805428/1475139994052984905/2afed0766630c9466789ecc05941fcb3.jpg?ex=699c66ad&is=699b152d&hm=0ac14a64f36268c218e25c25c6d1399e063095ca30c702b3efe007337d586f98&",
+        avatar_url = "https://cdn.discordapp.com/attachments/1454783748909432893/1468591782454628352/Tak_berjudul76_20260203000028.png?ex=6997b1ee&is=6996606e&hm=c633dbc5d9833ac65c26409df2ba0b63b2b9e5f2b90dca2210aa0a33c9021819",
         embeds = {{
             title = "Test Webhook Connected",
             description = "Webhook connection successful!",
@@ -1321,7 +1321,7 @@ function sendNewFishWebhook(newlyCaughtFish)
         embeds = {{
             title = "Noxius Fish caught!",
             description = string.format("Congrats! **%s** You obtained new **%s** here for full detail fish :", playerName, newFishRarity),
-            url = "https://discord.gg/noxius",
+            url = "https://discord.gg/jdmX43t5mY",
             color = 65280,
             fields = {
                 { name = "Name Fish :",        value = "```\n"..newFishDetails.Name.."```" },
@@ -1334,7 +1334,7 @@ function sendNewFishWebhook(newlyCaughtFish)
             },
             footer = {
                 text = "Noxius Webhook",
-                icon_url = "https://cdn.discordapp.com/attachments/1452511323672805428/1475139994052984905/2afed0766630c9466789ecc05941fcb3.jpg?ex=699c66ad&is=699b152d&hm=0ac14a64f36268c218e25c25c6d1399e063095ca30c702b3efe007337d586f98&"
+                icon_url = "https://cdn.discordapp.com/attachments/1454783748909432893/1468591782454628352/Tak_berjudul76_20260203000028.png?ex=6997b1ee&is=6996606e&hm=c633dbc5d9833ac65c26409df2ba0b63b2b9e5f2b90dca2210aa0a33c9021819"
             },
             timestamp = os.date("!%Y-%m-%dT%H:%M:%S.000Z"),
             thumbnail = {
@@ -1342,7 +1342,7 @@ function sendNewFishWebhook(newlyCaughtFish)
             }
         }},
         username = "Noxius Webhook",
-        avatar_url = "https://cdn.discordapp.com/attachments/1452511323672805428/1475139994052984905/2afed0766630c9466789ecc05941fcb3.jpg?ex=699c66ad&is=699b152d&hm=0ac14a64f36268c218e25c25c6d1399e063095ca30c702b3efe007337d586f98&",
+        avatar_url = "https://cdn.discordapp.com/attachments/1454783748909432893/1468591782454628352/Tak_berjudul76_20260203000028.png?ex=6997b1ee&is=6996606e&hm=c633dbc5d9833ac65c26409df2ba0b63b2b9e5f2b90dca2210aa0a33c9021819",
         attachments = {}
     }
 
@@ -2315,7 +2315,7 @@ Tab6:Section({
 
 Tab6:Divider()
 
-local IslandLocations = {
+local FishingLocations = {
     ["Ancient Jungle"] = Vector3.new(1518, 1, -186),
     ["Ancient Ruins"] = Vector3.new(6009, -585, 4691),
     ["Coral Refs"] = Vector3.new(-2855, 47, 1996),
@@ -2444,7 +2444,7 @@ Tab6:Button({
 })
 
 Tab6:Section({
-    Title = "Event",
+    Title = "Event Teleporter",
     Icon = "calendar",
     TextXAlignment = "Left",
     TextSize = 17,
@@ -2983,38 +2983,4 @@ Tab7:Button({
     end
 })
 
-Tab7:Section({ 
-    Title = "Script Ga Guna",
-    Icon = "file-code-corner",
-    TextXAlignment = "Left",
-    TextSize = 17,
-})
-
 Tab7:Divider()
-
-Tab7:Button({
-    Title = "FLY",
-    Desc = "Scripts Fly Gui",
-    Locked = false,
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
-    end
-})
-
-Tab7:Button({
-    Title = "Simple Shader",
-    Desc = "Shader",
-    Locked = false,
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/p0e1/1/refs/heads/main/SimpleShader.lua"))()
-    end
-})
-
-Tab7:Button({
-    Title = "Infinite Yield",
-    Desc = "Other Scripts",
-    Locked = false,
-    Callback = function()
-        loadstring(game:HttpGet('https://raw.githubusercontent.com/DarkNetworks/Infinite-Yield/main/latest.lua'))()
-    end
-})
