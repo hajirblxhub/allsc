@@ -48,6 +48,7 @@ end)()
 
 local RemoteIndices = {
     EquipTool = 95,
+    UnequipTool = 93,              -- Baru
     ChargeFishingRod = 127,
     RequestMinigame = 135,
     CancelFishingInputs = 29,
@@ -57,6 +58,9 @@ local RemoteIndices = {
     FishNotification = 139,
     SellAllItems = 149,
     SpawnTotem = 237,
+    PurchaseWeather = 43,          -- Baru (Penting untuk Tab Shop)
+    SystemMessage = 15,            -- Baru
+    ExclaimEvent = 21,             -- Baru
 }
 
 local Window = WindUI:CreateWindow({
@@ -138,7 +142,7 @@ WindUI:Notify({
 
 local Tab1 = Window:Tab({ 
     Title = "Info",
-    Icon = "info",
+    Icon = "rbxassetid://7733964719",
 })
 
 Tab1:Section({
@@ -185,7 +189,7 @@ local Humanoid = Character:WaitForChild("Humanoid")
 
 local Tab2 = Window:Tab({
     Title = "Players",
-    Icon = "user",
+    Icon = "rbxassetid://7743875962",
 })
 
 Tab2:Slider({
@@ -447,7 +451,7 @@ end
 
 local Tab3 = Window:Tab({
     Title = "Main",
-    Icon = "landmark"
+    Icon = "rbxassetid://7733779610"
 })
 
 Tab3:Section({
@@ -1183,7 +1187,7 @@ Tab3:Button({
 
 local Tab4 = Window:Tab({
 	Title = "Exclusive",
-	Icon = "star"
+	Icon = "rbxassetid://7733765398"
 })
 
 Tab4:Section({ 
@@ -1531,6 +1535,661 @@ Tab4:Toggle({
         _G.AutoFishing = v
     end
 })
+
+-- ==========================================
+-- [BARU] Recovery & Perfection Section
+-- ==========================================
+local RecoverySection = Tab4:Section({
+    Title = "Recovery & Perfection",
+    Icon = "refresh-cw",
+    TextXAlignment = "Left",
+    TextSize = 17
+})
+Tab4:Divider()
+
+-- Pastikan st sudah ada (mencegah error nil)
+st = st or {}
+
+-- Recovery Fishing Button
+Tab4:Button({
+    Title = "Recovery Fishing",
+    Desc = "Fix stuck fishing & reset state",
+    Callback = function()
+        WindUI:Notify({
+            Title = "Recovery Fishing",
+            Content = "Attempting to recover fishing state...",
+            Duration = 2,
+            Icon = "alert-circle"
+        })
+
+        -- Step 1: Cancel any active fishing
+        pcall(function()
+            if remotes[29] then
+                remotes[29]:InvokeServer(true)
+            end
+        end)
+        task.wait(0.1)
+
+        -- Step 2: Force complete stuck fishing
+        pcall(function()
+            if remotes[141] then
+                remotes[141]:InvokeServer()
+            end
+        end)
+        task.wait(0.1)
+
+        -- Step 3: Cancel lagi biar bersih
+        pcall(function()
+            if remotes[29] then
+                remotes[29]:InvokeServer(true)
+            end
+        end)
+        task.wait(0.1)
+
+        -- Step 4: Reset state
+        if st then
+            st.canFish = true
+        end
+
+        -- Step 5: Re-equip rod kalau AutoEquipRod nyala
+        if _G.AutoEquipRod then
+            pcall(function()
+                if remotes[95] then
+                    remotes[95]:FireServer(1)
+                end
+            end)
+        end
+
+        WindUI:Notify({
+            Title = "Recovery Complete",
+            Content = "Fishing state has been reset!",
+            Duration = 3,
+            Icon = "check"
+        })
+    end
+})
+
+-- Hook FishingController untuk Auto Perfection
+local FishingController = nil
+pcall(function()
+    FishingController = require(game:GetService("ReplicatedStorage").Controllers.FishingController)
+end)
+
+local oldClick, oldCharge = nil, nil
+if FishingController then
+    oldClick  = FishingController.RequestFishingMinigameClick
+    oldCharge = FishingController.RequestChargeFishingRod
+end
+
+Tab4:Toggle({
+    Title = "Auto Perfection",
+    Desc = "Disable click & charge → perfect catch",
+    Default = false,
+    Callback = function(state)
+        _G.AutoPerfection = state
+        
+        if state then
+            -- Disable manual input biar auto perfect
+            if FishingController then
+                FishingController.RequestFishingMinigameClick = function(...) end
+                FishingController.RequestChargeFishingRod   = function(...) end
+            end
+            
+            -- Aktifkan auto fishing state
+            pcall(function()
+                if remotes[121] then
+                    remotes[121]:InvokeServer(true)
+                end
+            end)
+            
+            WindUI:Notify({
+                Title = "Auto Perfection",
+                Content = "ON — Manual click/charge disabled",
+                Duration = 2,
+                Icon = "zap"
+            })
+        else
+            -- Kembalikan fungsi asli
+            if FishingController and oldClick and oldCharge then
+                FishingController.RequestFishingMinigameClick = oldClick
+                FishingController.RequestChargeFishingRod   = oldCharge
+            end
+            
+            -- Matikan auto fishing state
+            pcall(function()
+                if remotes[121] then
+                    remotes[121]:InvokeServer(false)
+                end
+            end)
+            
+            WindUI:Notify({
+                Title = "Auto Perfection",
+                Content = "OFF — Manual controls restored",
+                Duration = 2,
+                Icon = "off"
+            })
+        end
+    end
+})
+
+Tab4:Divider()
+
+-- ==========================================
+-- [BARU] Auto Totem Section
+-- ==========================================
+local TotemSection = Tab4:Section({
+    Title = "Auto Totem",
+    Icon = "sparkles",
+    TextXAlignment = "Left",
+    TextSize = 17
+})
+Tab4:Divider()
+
+local TOTEM_DATA = {
+    ["Luck Totem"]     = {Id = 1, Duration = 3601},
+    ["Mutation Totem"] = {Id = 2, Duration = 3601},
+    ["Shiny Totem"]    = {Id = 3, Duration = 3601}
+}
+local TOTEM_NAMES = {"Luck Totem", "Mutation Totem", "Shiny Totem"}
+
+local selectedTotemName = "Luck Totem"
+local AUTO_TOTEM_ACTIVE = false
+local AUTO_TOTEM_THREAD = nil
+local currentTotemExpiry = 0
+
+-- Fungsi ambil UUID totem dari inventory
+local function GetTotemUUID(name)
+    local Data = nil
+    pcall(function()
+        Data = require(game:GetService("ReplicatedStorage").Packages.Replion).Client:WaitReplion("Data")
+    end)
+    if not Data then return nil end
+    
+    local totems = Data:GetExpect({"Inventory", "Totems"}) or {}
+    for _, item in ipairs(totems) do
+        if tonumber(item.Id) == TOTEM_DATA[name].Id and (item.Count or 1) >= 1 then
+            return item.UUID
+        end
+    end
+    return nil
+end
+
+-- Loop Auto Totem Single
+local function RunAutoTotemLoop()
+    if AUTO_TOTEM_THREAD then task.cancel(AUTO_TOTEM_THREAD) end
+    
+    AUTO_TOTEM_THREAD = task.spawn(function()
+        while AUTO_TOTEM_ACTIVE do
+            local timeLeft = currentTotemExpiry - os.time()
+            if timeLeft <= 0 then
+                local uuid = GetTotemUUID(selectedTotemName)
+                if uuid then
+                    pcall(function()
+                        remotes[237]:FireServer(uuid)
+                    end)
+                    currentTotemExpiry = os.time() + TOTEM_DATA[selectedTotemName].Duration
+                    
+                    -- Re-equip rod setelah spawn totem
+                    task.spawn(function()
+                        task.wait(0.5)
+                        for i = 1, 8 do
+                            task.wait(0.25)
+                            pcall(function()
+                                remotes[95]:FireServer(1)
+                            end)
+                        end
+                        WindUI:Notify({
+                            Title = "Auto Totem",
+                            Content = selectedTotemName .. " di-spawn & rod di-equip ulang",
+                            Duration = 3,
+                            Icon = "check"
+                        })
+                    end)
+                else
+                    WindUI:Notify({
+                        Title = "Auto Totem",
+                        Content = "Tidak ada " .. selectedTotemName .. " di inventory",
+                        Duration = 4,
+                        Icon = "alert-circle"
+                    })
+                end
+            end
+            task.wait(1)
+        end
+    end)
+end
+
+TotemSection:Dropdown({
+    Title = "Pilih Totem",
+    Values = TOTEM_NAMES,
+    Value = selectedTotemName,
+    Callback = function(n)
+        selectedTotemName = n
+        currentTotemExpiry = 0  -- reset timer supaya langsung coba spawn
+        WindUI:Notify({
+            Title = "Totem Diubah",
+            Content = "Sekarang: " .. n,
+            Duration = 3,
+            Icon = "refresh-cw"
+        })
+    end
+})
+
+TotemSection:Toggle({
+    Title = "Auto Totem (Single)",
+    Desc = "Auto spawn totem yang dipilih saat habis",
+    Default = false,
+    Callback = function(state)
+        AUTO_TOTEM_ACTIVE = state
+        if state then
+            RunAutoTotemLoop()
+            WindUI:Notify({
+                Title = "Auto Totem Single",
+                Content = "Diaktifkan - menunggu totem habis",
+                Duration = 4,
+                Icon = "zap"
+            })
+        else
+            if AUTO_TOTEM_THREAD then task.cancel(AUTO_TOTEM_THREAD) end
+            WindUI:Notify({
+                Title = "Auto Totem Single",
+                Content = "Dimatikan",
+                Duration = 3,
+                Icon = "power-off"
+            })
+        end
+    end
+})
+
+-- ───────────────────────────────────────────────
+--          AUTO 3 TOTEM MIX (Shiny → Luck → Mutation)
+-- ───────────────────────────────────────────────
+
+local AUTO_3_TOTEM_ACTIVE = false
+local AUTO_3_TOTEM_THREAD = nil
+
+local TOTEM_MIX_ORDER = {"Shiny Totem", "Luck Totem", "Mutation Totem"}
+
+local REF_CENTER = Vector3.new(93.932, 9.532, 2684.134)
+local REF_SPOTS = {
+    Vector3.new(45.0468979, 13.5, 2730.19067),   -- Shiny
+    Vector3.new(145.644608, 13.5, 2721.90747),   -- Luck
+    Vector3.new(84.6406631, 14.2, 2636.05786),   -- Mutation
+}
+
+local TweenService = game:GetService("TweenService")
+
+local function GetRoot()
+    local char = game.Players.LocalPlayer.Character
+    if not char then return nil end
+    return char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
+end
+
+local function TweenTo(targetCFrame, duration)
+    local root = GetRoot()
+    if not root then return end
+    
+    root.Anchored = true
+    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+    local tween = TweenService:Create(root, tweenInfo, {CFrame = targetCFrame})
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+local function CreatePlatform(position)
+    local plat = Instance.new("Part")
+    plat.Name = "TotemPlatform"
+    plat.Size = Vector3.new(10, 1, 10)
+    plat.Position = position - Vector3.new(0, 3.5, 0)
+    plat.Anchored = true
+    plat.CanCollide = true
+    plat.Transparency = 0.6
+    plat.Color = Color3.fromRGB(0, 255, 200)
+    plat.Material = Enum.Material.Neon
+    plat.Parent = workspace
+    return plat
+end
+
+local function Run3TotemLoop()
+    if AUTO_3_TOTEM_THREAD then task.cancel(AUTO_3_TOTEM_THREAD) end
+    
+    AUTO_3_TOTEM_THREAD = task.spawn(function()
+        local player = game.Players.LocalPlayer
+        local root = GetRoot()
+        if not root then 
+            AUTO_3_TOTEM_ACTIVE = false
+            return 
+        end
+        
+        local startCFrame = root.CFrame
+        WindUI:Notify({Title = "Auto 3 Totem", Content = "Mulai cycle Shiny → Luck → Mutation", Duration = 5})
+
+        -- Equip oxygen tank (opsional)
+        pcall(function()
+            Net["RF/EquipOxygenTank"]:InvokeServer(105)
+        end)
+
+        while AUTO_3_TOTEM_ACTIVE do
+            for i, spot in ipairs(REF_SPOTS) do
+                if not AUTO_3_TOTEM_ACTIVE then break end
+                
+                local totemName = TOTEM_MIX_ORDER[i]
+                local targetPos = startCFrame.Position + (spot - REF_CENTER)
+                local targetCFrame = CFrame.new(targetPos)
+                
+                -- 1. Tween ke lokasi
+                local dist = (root.Position - targetPos).Magnitude
+                local travelTime = math.max(1.5, dist / 60)
+                TweenTo(targetCFrame, travelTime)
+                
+                -- 2. Buat platform
+                local platform = CreatePlatform(targetPos)
+                root.Anchored = false
+                task.wait(0.6)
+                
+                -- 3. Spawn totem
+                local uuid = GetTotemUUID(totemName)
+                if uuid then
+                    pcall(function() remotes[237]:FireServer(uuid) end)
+                    
+                    -- Re-equip rod beberapa kali
+                    task.spawn(function()
+                        for _ = 1, 6 do
+                            pcall(function() remotes[95]:FireServer(1) end)
+                            task.wait(0.18)
+                        end
+                    end)
+                    
+                    WindUI:Notify({
+                        Title = "Totem Spawn",
+                        Content = totemName .. " berhasil di-spawn",
+                        Duration = 2.5
+                    })
+                else
+                    WindUI:Notify({
+                        Title = "Skip",
+                        Content = "Tidak ada " .. totemName,
+                        Duration = 3,
+                        Icon = "alert-circle"
+                    })
+                end
+                
+                task.wait(3.2)  -- tunggu interaksi
+                
+                -- Cleanup
+                if platform then platform:Destroy() end
+                root.Anchored = true
+            end
+            
+            -- Balik ke posisi awal
+            if AUTO_3_TOTEM_ACTIVE then
+                TweenTo(startCFrame, 2.5)
+                root.Anchored = false
+                WindUI:Notify({
+                    Title = "Cycle Selesai",
+                    Content = "Menunggu ~1 jam untuk cycle berikutnya...",
+                    Duration = 6
+                })
+            end
+            
+            -- Tunggu 1 jam (dengan check cancel)
+            for i = 1, 3600 do
+                if not AUTO_3_TOTEM_ACTIVE then break end
+                task.wait(1)
+            end
+        end
+        
+        -- Cleanup saat dimatikan
+        pcall(function()
+            Net["RF/UnequipOxygenTank"]:InvokeServer()
+        end)
+        root.Anchored = false
+        for _, obj in ipairs(workspace:GetChildren()) do
+            if obj.Name == "TotemPlatform" then obj:Destroy() end
+        end
+    end)
+end
+
+TotemSection:Toggle({
+    Title = "Auto Spawn 3 Totem Mix",
+    Desc = "Cycle Shiny → Luck → Mutation (perlu 3 totem berbeda)",
+    Default = false,
+    Callback = function(state)
+        AUTO_3_TOTEM_ACTIVE = state
+        if state then
+            Run3TotemLoop()
+            WindUI:Notify({
+                Title = "Auto 3 Totem Mix",
+                Content = "Diaktifkan - mulai dari posisi sekarang",
+                Duration = 4,
+                Icon = "sparkles"
+            })
+        else
+            AUTO_3_TOTEM_ACTIVE = false
+            if AUTO_3_TOTEM_THREAD then task.cancel(AUTO_3_TOTEM_THREAD) end
+            WindUI:Notify({
+                Title = "Auto 3 Totem Mix",
+                Content = "Dimatikan & dibersihkan",
+                Duration = 3,
+                Icon = "power-off"
+            })
+        end
+    end
+})
+
+Tab4:Divider()
+
+local BuyTotemSection = Tab4:Section({
+    Title = "Auto Buy Totem",
+    Icon = "shopping-cart",
+    TextXAlignment = "Left",
+    TextSize = 17
+})
+Tab4:Divider()
+
+-- Inisialisasi variabel global kalau belum ada
+_G.AutoBuyTotem     = _G.AutoBuyTotem or false
+_G.SelectedBuyTotem = _G.SelectedBuyTotem or "Luck Totem"
+_G.BuyTotemLimit    = _G.BuyTotemLimit or 10
+
+-- ID untuk remote purchase (sesuaikan kalau update game)
+local TotemMarketIds = {
+    ["Luck Totem"]     = 1,   -- Ubah kalau ID market berubah
+    ["Mutation Totem"] = 2,
+    ["Shiny Totem"]    = 3
+}
+
+-- ID di inventory (untuk cek jumlah setelah beli)
+local TotemInventoryIds = {
+    ["Luck Totem"]     = 1,
+    ["Mutation Totem"] = 2,
+    ["Shiny Totem"]    = 3
+}
+
+BuyTotemSection:Dropdown({
+    Title = "Pilih Totem yang akan dibeli",
+    Values = {"Luck Totem", "Mutation Totem", "Shiny Totem"},
+    Value = _G.SelectedBuyTotem,
+    Callback = function(selected)
+        _G.SelectedBuyTotem = selected
+        WindUI:Notify({
+            Title = "Totem Dipilih",
+            Content = "Akan membeli: " .. selected,
+            Duration = 3,
+            Icon = "refresh-cw"
+        })
+    end
+})
+
+BuyTotemSection:Input({
+    Title = "Limit Pembelian (max berapa)",
+    Placeholder = "10",
+    Value = tostring(_G.BuyTotemLimit),
+    Callback = function(input)
+        local num = tonumber(input)
+        if num and num > 0 then
+            _G.BuyTotemLimit = num
+            WindUI:Notify({
+                Title = "Limit Diubah",
+                Content = "Maksimal beli: " .. num .. " totem",
+                Duration = 3,
+                Icon = "settings"
+            })
+        else
+            WindUI:Notify({
+                Title = "Input Salah",
+                Content = "Masukkan angka lebih dari 0",
+                Duration = 3,
+                Icon = "alert-circle"
+            })
+        end
+    end
+})
+
+local purchaseCount = 0
+
+BuyTotemSection:Toggle({
+    Title = "Enable Auto Buy Totem",
+    Desc = "Otomatis beli totem sampai limit tercapai",
+    Default = false,
+    Callback = function(value)
+        _G.AutoBuyTotem = value
+        
+        if value then
+            purchaseCount = 0  -- reset counter
+            
+            WindUI:Notify({
+                Title = "Auto Buy Dimulai",
+                Content = "Membeli: " .. _G.SelectedBuyTotem .. " | Limit: " .. _G.BuyTotemLimit,
+                Duration = 4,
+                Icon = "zap"
+            })
+            
+            task.spawn(function()
+                local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                local PurchaseRemote = ReplicatedStorage.Packages._Index["sleitnick_net@0.2.0"].net["RF/PurchaseMarketItem"]
+                
+                local function GetTotemCount(totemName)
+                    local success, result = pcall(function()
+                        local Replion = require(ReplicatedStorage.Packages.Replion).Client
+                        local Data = Replion:WaitReplion("Data")
+                        local inventory = Data:GetExpect("Inventory")
+                        
+                        local invId = TotemInventoryIds[totemName]
+                        if inventory and inventory.Totems then
+                            local count = 0
+                            for _, item in ipairs(inventory.Totems) do
+                                if tonumber(item.Id) == invId then
+                                    count = count + (item.Count or 1)
+                                end
+                            end
+                            return count
+                        end
+                        return 0
+                    end)
+                    return success and result or 0
+                end
+                
+                while _G.AutoBuyTotem and purchaseCount < _G.BuyTotemLimit do
+                    local totemId = TotemMarketIds[_G.SelectedBuyTotem]
+                    local before = GetTotemCount(_G.SelectedBuyTotem)
+                    
+                    local success, response = pcall(function()
+                        return PurchaseRemote:InvokeServer(totemId)
+                    end)
+                    
+                    if success then
+                        if response then  -- asumsi server return true kalau berhasil
+                            task.wait(0.6)  -- tunggu inventory sync
+                            local after = GetTotemCount(_G.SelectedBuyTotem)
+                            
+                            if after > before then
+                                purchaseCount = purchaseCount + 1
+                                WindUI:Notify({
+                                    Title = "Berhasil Beli",
+                                    Content = _G.SelectedBuyTotem .. " (" .. purchaseCount .. "/" .. _G.BuyTotemLimit .. ")",
+                                    Duration = 3,
+                                    Icon = "check"
+                                })
+                            else
+                                WindUI:Notify({
+                                    Title = "Pembelian Gagal Verifikasi",
+                                    Content = "Inventory tidak bertambah (mungkin cooldown/server delay)",
+                                    Duration = 4,
+                                    Icon = "alert-circle"
+                                })
+                            end
+                        else
+                            WindUI:Notify({
+                                Title = "Gagal Beli",
+                                Content = "Tidak cukup coin / server tolak",
+                                Duration = 4,
+                                Icon = "x"
+                            })
+                            task.wait(3)  -- cooldown lebih lama kalau gagal
+                        end
+                    else
+                        WindUI:Notify({
+                            Title = "Error Remote",
+                            Content = tostring(response),
+                            Duration = 4,
+                            Icon = "alert-triangle"
+                        })
+                        task.wait(2)
+                    end
+                    
+                    task.wait(0.5)  -- delay antar pembelian
+                end
+                
+                -- selesai limit
+                if purchaseCount >= _G.BuyTotemLimit then
+                    _G.AutoBuyTotem = false
+                    WindUI:Notify({
+                        Title = "Auto Buy Selesai",
+                        Content = "Sudah beli " .. purchaseCount .. " totem. Fitur dimatikan otomatis.",
+                        Duration = 6,
+                        Icon = "check-circle"
+                    })
+                end
+            end)
+        else
+            WindUI:Notify({
+                Title = "Auto Buy Dimatikan",
+                Content = "Total dibeli selama sesi ini: " .. purchaseCount,
+                Duration = 4,
+                Icon = "power-off"
+            })
+        end
+    end
+})
+
+BuyTotemSection:Button({
+    Title = "Buka/Tutup Merchant GUI",
+    Desc = "Toggle tampilan Merchant di layar",
+    Callback = function()
+        local pg = game.Players.LocalPlayer.PlayerGui
+        local merchant = pg:FindFirstChild("Merchant")
+        
+        if merchant then
+            merchant.Enabled = not merchant.Enabled
+            WindUI:Notify({
+                Title = "Merchant GUI",
+                Content = merchant.Enabled and "Dibuka" or "Ditutup",
+                Duration = 3,
+                Icon = merchant.Enabled and "eye" or "eye-off"
+            })
+        else
+            WindUI:Notify({
+                Title = "Merchant Tidak Ditemukan",
+                Content = "GUI 'Merchant' tidak ada di PlayerGui",
+                Duration = 4,
+                Icon = "alert-circle"
+            })
+        end
+    end
+})
+
+Tab4:Divider()
 
 local Section = Tab4:Section({
 	Title = "Premium",
@@ -1989,7 +2648,7 @@ Tab4:Button({
 
 local Tab5 = Window:Tab({
     Title = "Shop",
-    Icon = "badge-dollar-sign",
+    Icon = "rbxassetid://7733793319",
 })
 
 Tab5:Section({ 
@@ -2149,7 +2808,8 @@ Tab5:Section({
 Tab5:Divider()
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RFPurchaseWeatherEvent = ReplicatedStorage.Packages._Index["sleitnick_net@0.2.0"].net["RF/PurchaseWeatherEvent"]
+-- Menggunakan indeks remote global yang sudah didefinisikan di atas
+local RFPurchaseWeatherEvent = remotes[43] 
 
 local weatherKeyMap = {
     ["Wind (10k Coins)"] = "Wind",
@@ -2238,7 +2898,7 @@ Tab5:Toggle({
 
 local Tab6 = Window:Tab({
     Title = "Teleport",
-    Icon = "map-pin",
+    Icon = "rbxassetid://128755575520135",
 })
 
 Tab6:Section({ 
@@ -2627,7 +3287,7 @@ Tab6:Toggle({
 
 local Tab7 = Window:Tab({
     Title = "Settings",
-    Icon = "settings",
+    Icon = "rbxassetid://7733954611",
 })
 
 Tab7:Section({ 
