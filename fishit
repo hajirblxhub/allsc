@@ -64,18 +64,26 @@ local RemoteIndices = {
 }
 
 local Window = WindUI:CreateWindow({
-    Title = "Noxius Community",
-    Icon = "rbxassetid://77194008928196",
-    Author = "Noxius | Team",
-    Folder = "ASSETS_HUB",
-    Size = UDim2.fromOffset(260, 290),
-    Transparent = true,
-    Theme = "Indigo",
-    SideBarWidth = 170,
-    HasOutline = true,
-    User = {
+    Title = "Noxius  |  Premium",
+    Folder = "ASSETS_HUB", 
+    Icon = "solar:ghost-bold",
+    NewElements = true,
+    HideSearchBar = false,
+    OpenButton = {
+        Title = "NOXIUS PREMIUM",
+        CornerRadius = UDim.new(1,0),
+        StrokeThickness = 3,
         Enabled = true,
-        Anonymous = true,
+        Draggable = true,
+        Scale = 0.5,
+        Color = ColorSequence.new(
+            Color3.fromHex("#30FF6A"), 
+            Color3.fromHex("#e7ff2f")
+        )
+    },
+    Topbar = {
+        Height = 44,
+        ButtonsType = "Mac",
     },
 })
 
@@ -121,17 +129,8 @@ G2L["ButtonRezise_2"].MouseButton1Click:Connect(function()
 	windowVisible = not windowVisible
 end)
 
-Window:Tag({
-    Title = "V.0.0.9",
-    Color = Color3.fromRGB(200, 0, 255),   -- ← Ubah ke ungu cerah
-    Radius = 17,
-})
-
-Window:Tag({
-    Title = "DEAD GAME!",
-    Color = Color3.fromRGB(200, 0, 255),   -- ← Ubah ke ungu cerah (sama supaya konsisten)
-    Radius = 17,
-})
+Window:Tag({ Title = "v" .. WindUI.Version, Icon = "github", Color = Color3.fromHex("#1c1c1c"), Border = true })
+Window:Tag({ Title = "Active", Color = Color3.fromHex("#10C550"), Border = true })
 
 WindUI:Notify({
     Title = "All Fitur Loaded",
@@ -142,7 +141,9 @@ WindUI:Notify({
 
 local Tab1 = Window:Tab({ 
     Title = "Info",
-    Icon = "rbxassetid://7733964719",
+    Icon = "solar:info-square-bold",
+    IconColor = Blue,
+    Border = true, 
 })
 
 Tab1:Section({
@@ -167,8 +168,9 @@ Tab1:Button({
 Tab1:Divider()
 
 Tab1:Paragraph({
-    Title = "Support",
-    Desc = "Join Us! Dapatkan update terbaru, support, dan komunitas Noxius di sini."
+    Title = "Welcome, " .. game.Players.LocalPlayer.DisplayName,
+    Desc = "Account Age: " .. game.Players.LocalPlayer.AccountAge .. " days\nExecutor: " .. (identifyexecutor and identifyexecutor() or "Unknown"),
+    ImageSize = 48,
 })
 
 Tab1:Divider()
@@ -1536,6 +1538,110 @@ Tab4:Toggle({
     end
 })
 
+local Section = Tab4:Section({
+	Title = "Flash Blatant Beta",
+	Icon = "fish",
+	TextXAlignment = "Left",
+	TextSize = 17
+})
+
+Tab4:Divider()
+
+_G.FlashCancelDelay = 1.8
+_G.FlashCompletedDelay = 1.6
+
+
+local function EquipRod()
+    pcall(function()
+        if RE.Equip then
+            RE.Equip:FireServer(1)
+        end
+    end)
+end
+
+local function ChargeRod()
+    pcall(function()
+        if RF.Charge then
+            RF.Charge:InvokeServer()
+        end
+    end)
+end
+
+local function RequestGame()
+    pcall(function()
+        if RF.Request then
+            RF.Request:InvokeServer(-0.57187473773956, 0.97093835883872, tick())
+        end
+    end)
+end
+
+local function Completed(minDelay)
+    pcall(function()
+        task.wait(minDelay or _G.FlashCompletedDelay)
+        if RF.Completed then
+            RF.Completed:InvokeServer()
+        end
+    end)
+end
+
+local function CancelFishing(minDelay)
+    pcall(function()
+        task.wait(minDelay or _G.FlashCancelDelay)
+        if RF.Cancel then
+            RF.Cancel:InvokeServer(true)
+        end
+    end)
+end
+
+-- Loop khusus Flash Blatant (pisah dari Fast Reel)
+task.spawn(function()
+    while task.wait() do
+        if _G.FlashBlatant then
+            EquipRod()
+            task.wait(0.08)
+            ChargeRod()
+            task.wait(0.15)
+            RequestGame()
+            task.wait(0.18)
+            Completed()
+            CancelFishing()
+        end
+    end
+end)
+
+Tab4:Input({
+    Title = "Bait Spawn Delay",
+    Placeholder = "1.8",
+    Locked = true, 
+    Callback = function(input)
+        local num = tonumber(input)
+        if num then
+            _G.FlashCancelDelay = num
+        end
+    end
+})
+
+Tab4:Input({
+    Title = "Completed Delay",
+    Placeholder = "1.6",
+    Locked = true, 
+    Callback = function(input)
+        local num = tonumber(input)
+        if num then
+            _G.FlashCompletedDelay = num
+        end
+    end
+})
+
+Tab4:Toggle({
+    Title = "Flash Blatant",
+    Locked = true, 
+    Default = false,
+    Callback = function(v)
+        _G.FlashBlatant = v
+    end
+})
+
 -- ==========================================
 -- [BARU] Recovery & Perfection Section
 -- ==========================================
@@ -2022,7 +2128,7 @@ BuyTotemSection:Dropdown({
 })
 
 BuyTotemSection:Input({
-    Title = "Limit Pembelian (max berapa)",
+    Title = "Limit Pembelian",
     Placeholder = "10",
     Value = tostring(_G.BuyTotemLimit),
     Callback = function(input)
@@ -2425,7 +2531,7 @@ local StreePanel = CreateStreePanel()
 
 Tab4:Toggle({
     Title = "Panel Check",
-    Desc = "Check CPU,Ping, FPS",
+    Desc = "Realtime Data",
     Value = false,
     Callback = function(state)
         StreePanel.Enabled = state
@@ -2552,96 +2658,6 @@ Tab4:Button({
                 RE.FavoriteItem:FireServer(item.UUID, false)
                 favState[item.UUID] = false
             end
-        end
-    end
-})
-
-local Section = Tab4:Section({
-	Title = "Gift",
-	Icon = "gift",
-	TextXAlignment = "Left",
-	TextSize = 17
-})
-
-Tab4:Divider()
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local GiftingController = require(ReplicatedStorage:WaitForChild("Controllers"):WaitForChild("GiftingController"))
-
-Tab4:Button({
-    Title = "Gift Skin Holy Trindent",
-    Locked = false,
-    Callback = function()
-        if GiftingController and GiftingController.Open then
-            GiftingController:Open("Holy Trindent")
-
-            WindUI:Notify({
-                Title = "Gift Open",
-                Content = "Holy Trindent Gift Opened Successfully",
-                Duration = 3,
-                Icon = "check"
-            })
-        else
-            WindUI:Notify({
-                Title = "Failed!!",
-                Content = "Patched",
-                Duration = 3,
-                Icon = "x"
-            })
-        end
-    end
-})
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local GiftingController = require(ReplicatedStorage:WaitForChild("Controllers"):WaitForChild("GiftingController"))
-
-Tab4:Button({
-    Title = "Gift Skin Ethereal Sword",
-    Locked = false,
-    Callback = function()
-        if GiftingController and GiftingController.Open then
-            GiftingController:Open("Ethereal Sword")
-
-            WindUI:Notify({
-                Title = "Gift Open",
-                Content = "Ethereal Sword Gift Opened Successfully",
-                Duration = 3,
-                Icon = "check"
-            })
-        else
-            WindUI:Notify({
-                Title = "Failed!!",
-                Content = "Patched",
-                Duration = 3,
-                Icon = "x"
-            })
-        end
-    end
-})
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local GiftingController = require(ReplicatedStorage:WaitForChild("Controllers"):WaitForChild("GiftingController"))
-
-Tab4:Button({
-    Title = "Gift Skin Crescendo Scythe",
-    Locked = false,
-    Callback = function()
-        if GiftingController and GiftingController.Open then
-            GiftingController:Open("Crescendo Scythe")
-
-            WindUI:Notify({
-                Title = "Gift Open",
-                Content = "Crescendo Scythe Gift Opened Successfully",
-                Duration = 3,
-                Icon = "check"
-            })
-        else
-            WindUI:Notify({
-                Title = "Failed!!",
-                Content = "Patched",
-                Duration = 3,
-                Icon = "x"
-            })
         end
     end
 })
@@ -3066,7 +3082,7 @@ Dropdown = Tab6:Dropdown({
 })
 
 Tab6:Button({
-    Title = "Teleport to Player (Target)",
+    Title = "Teleport to Player",
     Locked = false,
     Callback = function()
         if not SelectedPlayer then
@@ -3615,6 +3631,7 @@ end
 Tab7:Button({
     Title = "Save Config",
     Desc = "Save all settings",
+    Locked = true,
     Callback = function()
         local data = GetConfig()
         writefile(ConfigFolder.."/"..ConfigName, game:GetService("HttpService"):JSONEncode(data))
@@ -3624,6 +3641,7 @@ Tab7:Button({
 Tab7:Button({
     Title = "Load Config",
     Desc = "Use saved config",
+    Locked = true,
     Callback = function()
         if isfile(ConfigFolder.."/"..ConfigName) then
             local data = readfile(ConfigFolder.."/"..ConfigName)
@@ -3636,6 +3654,7 @@ Tab7:Button({
 Tab7:Button({
     Title = "Delete Config",
     Desc = "Delete saved config",
+    Locked = true,
     Callback = function()
         if isfile(ConfigFolder.."/"..ConfigName) then
             delfile(ConfigFolder.."/"..ConfigName)
