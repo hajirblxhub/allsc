@@ -64,26 +64,18 @@ local RemoteIndices = {
 }
 
 local Window = WindUI:CreateWindow({
-    Title = "Noxius  |  Premium",
-    Folder = "ASSETS_HUB", 
-    Icon = "solar:ghost-bold",
-    NewElements = true,
-    HideSearchBar = false,
-    OpenButton = {
-        Title = "NOXIUS PREMIUM",
-        CornerRadius = UDim.new(1,0),
-        StrokeThickness = 3,
+    Title = "Noxius Community",
+    Icon = "rbxassetid://77194008928196",
+    Author = "Noxius | Team",
+    Folder = "ASSETS_HUB",
+    Size = UDim2.fromOffset(260, 290),
+    Transparent = true,
+    Theme = "Indigo",
+    SideBarWidth = 170,
+    HasOutline = true,
+    User = {
         Enabled = true,
-        Draggable = true,
-        Scale = 0.5,
-        Color = ColorSequence.new(
-            Color3.fromHex("#30FF6A"), 
-            Color3.fromHex("#e7ff2f")
-        )
-    },
-    Topbar = {
-        Height = 44,
-        ButtonsType = "Mac",
+        Anonymous = true,
     },
 })
 
@@ -129,8 +121,17 @@ G2L["ButtonRezise_2"].MouseButton1Click:Connect(function()
 	windowVisible = not windowVisible
 end)
 
-Window:Tag({ Title = "v" .. WindUI.Version, Icon = "github", Color = Color3.fromHex("#1c1c1c"), Border = true })
-Window:Tag({ Title = "Active", Color = Color3.fromHex("#10C550"), Border = true })
+Window:Tag({
+    Title = "V.0.0.9",
+    Color = Color3.fromRGB(200, 0, 255),   -- ← Ubah ke ungu cerah
+    Radius = 17,
+})
+
+Window:Tag({
+    Title = "DEAD GAME!",
+    Color = Color3.fromRGB(200, 0, 255),   -- ← Ubah ke ungu cerah (sama supaya konsisten)
+    Radius = 17,
+})
 
 WindUI:Notify({
     Title = "All Fitur Loaded",
@@ -141,9 +142,7 @@ WindUI:Notify({
 
 local Tab1 = Window:Tab({ 
     Title = "Info",
-    Icon = "solar:info-square-bold",
-    IconColor = Blue,
-    Border = true, 
+    Icon = "rbxassetid://7733964719",
 })
 
 Tab1:Section({
@@ -168,9 +167,8 @@ Tab1:Button({
 Tab1:Divider()
 
 Tab1:Paragraph({
-    Title = "Welcome, " .. game.Players.LocalPlayer.DisplayName,
-    Desc = "Account Age: " .. game.Players.LocalPlayer.AccountAge .. " days\nExecutor: " .. (identifyexecutor and identifyexecutor() or "Unknown"),
-    ImageSize = 48,
+    Title = "Support",
+    Desc = "Join Us! Dapatkan update terbaru, support, dan komunitas Noxius di sini."
 })
 
 Tab1:Divider()
@@ -1550,6 +1548,8 @@ Tab4:Divider()
 _G.FlashCancelDelay = 1.8
 _G.FlashCompletedDelay = 1.6
 
+-- Pakai remote yang sudah ada dari atas (RE/RF)
+-- Kalau belum ada mapping nama, tambahin dulu di init remote lo
 
 local function EquipRod()
     pcall(function()
@@ -1610,7 +1610,7 @@ task.spawn(function()
 end)
 
 Tab4:Input({
-    Title = "Bait Spawn Delay",
+    Title = "Cancel Delay",
     Placeholder = "1.8",
     Locked = true, 
     Callback = function(input)
@@ -1641,7 +1641,6 @@ Tab4:Toggle({
         _G.FlashBlatant = v
     end
 })
-
 -- ==========================================
 -- [BARU] Recovery & Perfection Section
 -- ==========================================
@@ -2128,7 +2127,7 @@ BuyTotemSection:Dropdown({
 })
 
 BuyTotemSection:Input({
-    Title = "Limit Pembelian",
+    Title = "Limit Pembelian (max berapa)",
     Placeholder = "10",
     Value = tostring(_G.BuyTotemLimit),
     Callback = function(input)
@@ -3631,7 +3630,7 @@ end
 Tab7:Button({
     Title = "Save Config",
     Desc = "Save all settings",
-    Locked = true,
+    Locked = true, 
     Callback = function()
         local data = GetConfig()
         writefile(ConfigFolder.."/"..ConfigName, game:GetService("HttpService"):JSONEncode(data))
@@ -3641,7 +3640,7 @@ Tab7:Button({
 Tab7:Button({
     Title = "Load Config",
     Desc = "Use saved config",
-    Locked = true,
+    Locked = true, 
     Callback = function()
         if isfile(ConfigFolder.."/"..ConfigName) then
             local data = readfile(ConfigFolder.."/"..ConfigName)
@@ -3654,7 +3653,7 @@ Tab7:Button({
 Tab7:Button({
     Title = "Delete Config",
     Desc = "Delete saved config",
-    Locked = true,
+    Locked = true, 
     Callback = function()
         if isfile(ConfigFolder.."/"..ConfigName) then
             delfile(ConfigFolder.."/"..ConfigName)
