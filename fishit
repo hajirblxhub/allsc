@@ -320,6 +320,9 @@ local function equipRod()
 end
 
 local blatantFishCycleCount = 0
+local rainbow = 0
+local golden = 0
+local inventoryFish = 0
 
 local function ub_loop()
     while Config.UB.Active do
@@ -1445,6 +1448,26 @@ if isMobile then
     })
 end
 
+-- Definisi remote & function SELL (taruh ini DI ATAS TAB3, di global remote section)
+Events.sell = GetServerRemote("RF/SellAllItems") --remotes[149 + magix]
+
+local function sellAll()
+    pcall(function()
+        return Events.sell:InvokeServer()
+    end)
+end
+
+local function autoSell()
+    while true do
+        task.wait(Config.SellDelay * 60)
+        if Config.AutoSell then
+            print("menjual")
+            sellAll()
+        end
+    end
+end
+
+
 Tab3:Section({
     Title = "Sell & Totem Controls",
     Icon = "dollar-sign",
@@ -1458,14 +1481,29 @@ Tab3:Toggle({
         Config.AutoSell = Value
         if Value then
             Tasks.autoSellTask = task.spawn(autoSell)
+            WindUI:Notify({
+                Title = "Auto Sell",
+                Content = "Diaktifkan dengan delay " .. Config.SellDelay .. " menit",
+                Duration = 3
+            })
         else
             if Tasks.autoSellTask then
                 task.cancel(Tasks.autoSellTask)
                 Tasks.autoSellTask = nil
             end
+            WindUI:Notify({
+                Title = "Auto Sell",
+                Content = "Dimatikan",
+                Duration = 2
+            })
         end
     end
 })
+
+-- Auto start kalau Config.AutoSell true
+if Config.AutoSell then
+    Tasks.autoSellTask = task.spawn(autoSell)
+end
 
 Tab3:Input({
     Title = "Sell Delay (Minute)",
@@ -1502,6 +1540,7 @@ Tab3:Button({
         })
     end
 })
+
 
 if isMobile then
     Events.SpawnTotem = GetServerRemote("RE/SpawnTotem")
@@ -1789,17 +1828,30 @@ end)
 
 Tab4:Divider()
 
+local mutationTarget = mutationTarget or {}  -- global table favorit mutation
+
+local function RemoveValue(tbl, value)
+    for i, v in ipairs(tbl) do
+        if v == value then
+            table.remove(tbl, i)
+            return
+        end
+    end
+end
+
+local function isTargetVariant(variant)
+    for _, v in ipairs(mutationTarget) do
+        if v == variant then return true end
+    end
+    return false
+end
+
 local Tab5 = Window:Tab({
     Title = "Farming",
-    Icon = "pickaxe",
+    Icon = "rbxassetid://127294509474612",
 })
 
-Tab5:Section({
-    Title = "Crystal Mining",
-    Icon = "gem",
-})
-
--- Fly function persis dari kode kamu
+-- FLY FUNCTION (persis)
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local Speed = 80
@@ -1834,10 +1886,13 @@ local function toggleFly(enabled)
     end
 end
 
--- Manual Mining button persis
+Tab5:Section({
+    Title = "Crystal Mining",
+    Icon = "gem",
+})
+
 Tab5:Button({
     Title = "Manual Mining",
-    Description = "Nambang crystal manual (2x loop + fly + reset rod)",
     Callback = function()
         getAxeUUID()
         local args = {
@@ -1866,7 +1921,6 @@ Tab5:Button({
     end
 })
 
--- Auto Mining toggle persis
 Tab5:Toggle({
     Title = "Auto Mining Crystal",
     Description = "Otomatis nambamng kristal",
@@ -1879,13 +1933,10 @@ Tab5:Toggle({
                 Config.axeUuid, "Gears"
             }
             Events.equipItem:FireServer(unpack(args))
-        else
-            -- kalau mau stop task
         end
     end
 })
 
--- Auto start mobile
 if Config.AutoMining and isMobile then 
     sellAll()
     getAxeUUID()
@@ -1897,20 +1948,61 @@ if Config.AutoMining and isMobile then
     getAxeUUID()
 end
 
-Tab5:Divider()
+Tab5:Toggle({
+    Title = "Ancient Lochness Monster",
+    Description = "Otomatis memancing di Ancient Lochness Monster",
+    Default = false,
+    Callback = function(Value) 
+        Config.AutoFarm = Value
+    end
+})
 
--- Tambahan Auto Favorite Mutations (persis kode kamu)
 Tab5:Section({
-    Title = "Auto Favorite Mutations",
+    Title = "Position",
+})
+
+Events.ConsumeCaveCrystal = GetServerRemote("RF/ConsumeCaveCrystal")
+
+Tab5:Button({
+    Title = "Consume Cave Crystal",
+    Callback = function()
+        Events.ConsumeCaveCrystal:InvokeServer()
+        task.wait(2)
+        equipRod()
+    end
+})
+
+Tab5:Toggle({
+    Title = "Auto Consume Cave Crystal Every 30 Minutes",
+    Description = "Gunakan cave crystal setiap 30 menit",
+    Default = false,
+    Callback = function(Value)
+        Config.autoConsumeCaveCrystal = Value
+        if Value then
+            caveCrystalTask = task.spawn(function()
+                while true do
+                    Events.ConsumeCaveCrystal:InvokeServer()
+                    task.wait(2)
+                    equipRod()
+                    task.wait(60 * 30)
+                end
+            end)
+        else
+            task.cancel(caveCrystalTask)
+        end
+    end
+})
+
+-- Auto Favorites By Mutation (persis, tanpa Add)
+Tab5:Section({
+    Title = "Auto Favorites By Mutation",
     Icon = "star",
 })
 
--- List mutation persis dari kode kamu
 local mutations = {
-    "Gemstone", "Fairy Dust", "Cupid", "Leviathan Rage", "Crystalized", "Color Burn", "Lightning", "Noob", "Radioactive", "Midnight",  "Holographic", "Bloodmoon", "Festive", "Galaxy", "Albino", "Gold", "Frozen", "Corrupt"
+    "Gemstone", "Fairy Dust", "Cupid", "Leviathan Rage", "Crystalized", "Color Burn", "Lightning", "Noob", "Radioactive", "Midnight", "Holographic", "Bloodmoon", "Festive", "Galaxy", "Albino", "Gold", "Frozen", "Corrupt"
 }
 
--- Toggle khusus RUBY GEMSTONE
 Tab5:Toggle({
     Title = "RUBY GEMSTONE",
     Description = "Husus Ruby Gemstone",
@@ -1920,39 +2012,18 @@ Tab5:Toggle({
     end
 })
 
--- Loop toggle untuk setiap mutation
 for _, name in ipairs(mutations) do
     Tab5:Toggle({
         Title = name,
-        Default = isTargetVariant(name),  -- asumsi function ini sudah ada
+        Default = isTargetVariant(name),
         Callback = function(state)
             if state then
-                if not table.find(mutationTarget, name) then
-                    table.insert(mutationTarget, name)
-                end
+                if not table.find(mutationTarget, name) then table.insert(mutationTarget, name) end
             else
-                -- RemoveValue (kalau belum ada, aku tambahin definisi sederhana di bawah)
-                for i, v in ipairs(mutationTarget) do
-                    if v == name then
-                        table.remove(mutationTarget, i)
-                        break
-                    end
-                end
+                RemoveValue(mutationTarget, name)
             end
-            -- Optional: save config kalau perlu
-            -- SaveAllConfig() kalau ada function save
         end
     })
-end
-
--- Definisi RemoveValue kalau belum ada (sederhana)
-local function RemoveValue(tbl, value)
-    for i, v in ipairs(tbl) do
-        if v == value then
-            table.remove(tbl, i)
-            return
-        end
-    end
 end
 
 Tab5:Divider()
