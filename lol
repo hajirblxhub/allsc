@@ -4117,3 +4117,202 @@ Tab7:Button({
 })
 
 Tab7:Divider()
+
+local Tab8 = Window:Tab({ 
+    Title = "Event", 
+    Icon = "zap" 
+})
+
+Tab8:Section({
+    Title = "Event Teleport",
+    Icon = "zap"
+})
+
+local Workspace = game:GetService("Workspace")
+local megCheckRadius = 150
+_G.autoEventTPEnabled = false
+_G.selectedEvents = {}
+local createdEventPlatform = nil
+
+local eventData = {
+    ["Worm Hunt"] = {
+        TargetName = "Model",
+        Locations = {
+            Vector3.new(2190.85, -1.4, 97.575), 
+            Vector3.new(-2450.679, -1.4, 139.731), 
+            Vector3.new(-267.479, -1.4, 5188.531),
+            Vector3.new(-327, -1.4, 2422)
+        },
+        PlatformY = 107,
+        Priority = 1,
+        Icon = "fish"
+    },
+    ["Megalodon Hunt"] = {
+        TargetName = "Megalodon Hunt",
+        Locations = {
+            Vector3.new(-1076.3, -1.4, 1676.2),
+            Vector3.new(-1191.8, -1.4, 3597.3),
+            Vector3.new(412.7, -1.4, 4134.4),
+        },
+        PlatformY = 107,
+        Priority = 2,
+        Icon = "anchor"
+    },
+    ["Ghost Shark Hunt"] = {
+        TargetName = "Ghost Shark Hunt",
+        Locations = {
+            Vector3.new(489.559, -1.35, 25.406), 
+            Vector3.new(-1358.216, -1.35, 4100.556), 
+            Vector3.new(627.859, -1.35, 3798.081)
+        },
+        PlatformY = 107,
+        Priority = 3,
+        Icon = "fish"
+    },
+    ["Shark Hunt"] = {
+        TargetName = "Shark Hunt",
+        Locations = {
+            Vector3.new(1.65, -1.35, 2095.725),
+            Vector3.new(1369.95, -1.35, 930.125),
+            Vector3.new(-1585.5, -1.35, 1242.875),
+            Vector3.new(-1896.8, -1.35, 2634.375)
+        },
+        PlatformY = 107,
+        Priority = 4,
+        Icon = "fish"
+    },
+}
+
+local eventNames = {}
+for name in pairs(eventData) do
+    table.insert(eventNames, name)
+end
+table.sort(eventNames)
+
+local function destroyEventPlatform()
+    if createdEventPlatform and createdEventPlatform.Parent then
+        createdEventPlatform:Destroy()
+        createdEventPlatform = nil
+    end
+end
+
+local function createAndTeleportToPlatform(targetPos, y)
+    destroyEventPlatform()
+    
+    local character = game.Players.LocalPlayer.Character
+    local hrp = character and character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local platform = Instance.new("Part")
+    platform.Size = Vector3.new(20, 1, 20)
+    platform.Position = Vector3.new(targetPos.X, y, targetPos.Z)
+    platform.Anchored = true
+    platform.Transparency = 0.5 -- Kasih sedikit kelihatan biar tahu kalau napak
+    platform.Color = Color3.fromRGB(0, 255, 255)
+    platform.CanCollide = true
+    platform.Name = "NoxiusEventPlatform"
+    platform.Parent = Workspace
+    createdEventPlatform = platform
+
+    hrp.CFrame = CFrame.new(platform.Position + Vector3.new(0, 3, 0))
+end
+
+local function runMultiEventTP()
+    while _G.autoEventTPEnabled do
+        local sorted = {}
+        for _, e in ipairs(_G.selectedEvents) do
+            if eventData[e] then
+                table.insert(sorted, eventData[e])
+            end
+        end
+        table.sort(sorted, function(a, b) return a.Priority < b.Priority end)
+
+        local eventFoundInServer = false
+
+        for _, config in ipairs(sorted) do
+            if not _G.autoEventTPEnabled then break end
+            local foundTarget, foundPos = nil, nil
+
+            if config.TargetName == "Model" then
+                local menuRings = Workspace:FindFirstChild("!!! MENU RINGS")
+                if menuRings then
+                    for _, props in ipairs(menuRings:GetChildren()) do
+                        if props.Name == "Props" then
+                            local model = props:FindFirstChild("Model")
+                            if model and model.PrimaryPart then
+                                for _, loc in ipairs(config.Locations) do
+                                    if (model.PrimaryPart.Position - loc).Magnitude <= megCheckRadius then
+                                        foundTarget = model
+                                        foundPos = model.PrimaryPart.Position
+                                        break
+                                    end
+                                end
+                            end
+                        end
+                        if foundTarget then break end
+                    end
+                end
+            else
+                for _, loc in ipairs(config.Locations) do
+                    for _, d in ipairs(Workspace:GetDescendants()) do
+                        if d.Name == config.TargetName then
+                            local pos = d:IsA("BasePart") and d.Position or (d.PrimaryPart and d.PrimaryPart.Position)
+                            if pos and (pos - loc).Magnitude <= megCheckRadius then
+                                foundTarget = d
+                                foundPos = pos
+                                break
+                            end
+                        end
+                    end
+                    if foundTarget then break end
+                end
+            end
+
+            if foundTarget and foundPos then
+                eventFoundInServer = true
+                createAndTeleportToPlatform(foundPos, config.PlatformY)
+                break -- Fokus ke satu event dulu berdasarkan priority
+            end
+        end
+        
+        if not eventFoundInServer then
+            destroyEventPlatform()
+        end
+        
+        task.wait(2)
+    end
+    destroyEventPlatform()
+end
+
+Tab8:Dropdown({
+    Title = "Select Events",
+    Desc = "Pilih event untuk auto-teleport",
+    Values = eventNames,
+    Multi = true,
+    Value = _G.selectedEvents,
+    Callback = function(values)
+        _G.selectedEvents = values or {}
+    end
+})
+
+Tab8:Toggle({
+    Title = "Auto Event Teleport",
+    Desc = "Teleport otomatis ke event (Anti-Eat Platform)",
+    Value = _G.autoEventTPEnabled,
+    Callback = function(state)
+        _G.autoEventTPEnabled = state
+        if state then
+            if #_G.selectedEvents == 0 then
+                WindUI:Notify({Title = "Peringatan", Content = "Pilih event dulu di dropdown!", Duration = 3})
+                return
+            end
+            task.spawn(runMultiEventTP)
+            WindUI:Notify({Title = "Event TP Aktif", Content = "Mencari event terpilih...", Duration = 3})
+        else
+            destroyEventPlatform()
+            WindUI:Notify({Title = "Event TP", Content = "Dimatikan", Duration = 2})
+        end
+    end
+})
+
+Tab8:Divider()
