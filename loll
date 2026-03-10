@@ -4118,7 +4118,7 @@ Tab7:Button({
 
 Tab7:Divider()
 
-local Tab8 = Window:Tab({ 
+ local Tab8 = Window:Tab({ 
     Title = "Event", 
     Icon = "zap" 
 })
@@ -4129,9 +4129,10 @@ Tab8:Section({
 })
 
 local Workspace = game:GetService("Workspace")
+local LocalPlayer = game.Players.LocalPlayer
 local megCheckRadius = 150
-_G.autoEventTPEnabled = false
-_G.selectedEvents = {}
+local autoEventTPEnabled = false
+local selectedEvents = {}
 local createdEventPlatform = nil
 
 local eventData = {
@@ -4187,7 +4188,6 @@ local eventNames = {}
 for name in pairs(eventData) do
     table.insert(eventNames, name)
 end
-table.sort(eventNames)
 
 local function destroyEventPlatform()
     if createdEventPlatform and createdEventPlatform.Parent then
@@ -4199,16 +4199,15 @@ end
 local function createAndTeleportToPlatform(targetPos, y)
     destroyEventPlatform()
     
-    local character = game.Players.LocalPlayer.Character
+    local character = LocalPlayer.Character
     local hrp = character and character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
     local platform = Instance.new("Part")
-    platform.Size = Vector3.new(20, 1, 20)
+    platform.Size = Vector3.new(15, 1, 15)
     platform.Position = Vector3.new(targetPos.X, y, targetPos.Z)
     platform.Anchored = true
-    platform.Transparency = 0.5 -- Kasih sedikit kelihatan biar tahu kalau napak
-    platform.Color = Color3.fromRGB(0, 255, 255)
+    platform.Transparency = 1
     platform.CanCollide = true
     platform.Name = "NoxiusEventPlatform"
     platform.Parent = Workspace
@@ -4218,19 +4217,17 @@ local function createAndTeleportToPlatform(targetPos, y)
 end
 
 local function runMultiEventTP()
-    while _G.autoEventTPEnabled do
+    while autoEventTPEnabled do
         local sorted = {}
-        for _, e in ipairs(_G.selectedEvents) do
+        for _, e in ipairs(selectedEvents) do
             if eventData[e] then
                 table.insert(sorted, eventData[e])
             end
         end
         table.sort(sorted, function(a, b) return a.Priority < b.Priority end)
 
-        local eventFoundInServer = false
-
         for _, config in ipairs(sorted) do
-            if not _G.autoEventTPEnabled then break end
+            if not autoEventTPEnabled then break end
             local foundTarget, foundPos = nil, nil
 
             if config.TargetName == "Model" then
@@ -4269,40 +4266,32 @@ local function runMultiEventTP()
             end
 
             if foundTarget and foundPos then
-                eventFoundInServer = true
                 createAndTeleportToPlatform(foundPos, config.PlatformY)
-                break -- Fokus ke satu event dulu berdasarkan priority
             end
         end
-        
-        if not eventFoundInServer then
-            destroyEventPlatform()
-        end
-        
-        task.wait(2)
+        task.wait(1)
     end
     destroyEventPlatform()
 end
 
 Tab8:Dropdown({
     Title = "Select Events",
-    Desc = "Pilih event untuk auto-teleport",
+    Description = "Pilih event yang ingin di-auto-teleport",
     Values = eventNames,
     Multi = true,
-    Value = _G.selectedEvents,
     Callback = function(values)
-        _G.selectedEvents = values or {}
+        selectedEvents = values or {}
     end
 })
 
 Tab8:Toggle({
     Title = "Auto Event Teleport",
-    Desc = "Teleport otomatis ke event (Anti-Eat Platform)",
-    Value = _G.autoEventTPEnabled,
+    Description = "Teleport otomatis ke event aktif (Anti-Eat Platform)",
+    Default = false,
     Callback = function(state)
-        _G.autoEventTPEnabled = state
+        autoEventTPEnabled = state
         if state then
-            if #_G.selectedEvents == 0 then
+            if #selectedEvents == 0 then
                 WindUI:Notify({Title = "Peringatan", Content = "Pilih event dulu di dropdown!", Duration = 3})
                 return
             end
