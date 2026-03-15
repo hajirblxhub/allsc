@@ -1263,6 +1263,19 @@ local function getConfigList()
     return configs
 end
 
+local function UpdateDropdown(dropdown, list)
+    if not dropdown then return end
+    if dropdown.Refresh then
+        dropdown:Refresh(list, true)
+    elseif dropdown.SetOptions then
+        dropdown:SetOptions(list)
+    elseif dropdown.Update then
+        dropdown:Update(list)
+    elseif dropdown.SetValues then
+        dropdown:SetValues(list)
+    end
+end
+
 local configDropdown = SecConfig:AddDropdown({
     Name = "Select Config",
     Options = getConfigList(),
@@ -1297,6 +1310,11 @@ SecConfig:AddButton({
         pcall(function()
             if SaveAllConfig then
                 SaveAllConfig(fileName)
+            else
+                -- Fallback jika SaveAllConfig tidak ada
+                if ConfigData then
+                    writefile(fileName, game:GetService("HttpService"):JSONEncode(ConfigData))
+                end
             end
             
             if SaveConfig then 
@@ -1304,11 +1322,7 @@ SecConfig:AddButton({
             end
         end)
 
-        -- BAGIAN PERBAIKAN: Cek dulu apakah Refresh ada sebelum dipanggil
-        if configDropdown and configDropdown.Refresh then
-            configDropdown:Refresh(getConfigList(), true)
-        end
-        
+        UpdateDropdown(configDropdown, getConfigList())
         Notify("Success", "Config '" .. name .. "' disimpan!", 2)
     end
 })
@@ -1323,12 +1337,14 @@ SecConfig:AddButton({
         local fileName = "NoxiusConfigs/" .. selectedConfigToLoad .. ".json"
 
         pcall(function()
-            if LoadConfig then
-                loadfile(fileName)() -- Atau LoadConfig(fileName) tergantung logic script lu
-            end
-            
-            if LoadConfigFromFile then
-                LoadConfigFromFile("NoxiusUI_" .. selectedConfigToLoad)
+            if isfile(fileName) then
+                if LoadConfig then
+                    LoadConfig(fileName)
+                end
+                
+                if LoadConfigFromFile then
+                    LoadConfigFromFile("NoxiusUI_" .. selectedConfigToLoad)
+                end
             end
         end)
 
@@ -1339,28 +1355,24 @@ SecConfig:AddButton({
 SecConfig:AddButton({
     Title = "Refresh List",
     Callback = function()
-        -- BAGIAN PERBAIKAN
-        if configDropdown and configDropdown.Refresh then
-            configDropdown:Refresh(getConfigList(), true)
-            Notify("System", "List diperbarui", 2)
-        else
-            Notify("Error", "Library ini tidak support Refresh lewat script", 3)
-        end
+        UpdateDropdown(configDropdown, getConfigList())
+        Notify("System", "List config diperbarui", 2)
     end
 })
 
 SecConfig:AddButton({
     Title = "Delete Config",
     Callback = function()
-        if selectedConfigToLoad == "" then return end
+        if selectedConfigToLoad == "" then 
+            return Notify("Error", "Pilih config yang mau dihapus!", 3)
+        end
         
         local fileName = "NoxiusConfigs/" .. selectedConfigToLoad .. ".json"
         if isfile(fileName) then
             delfile(fileName)
-            if configDropdown and configDropdown.Refresh then
-                configDropdown:Refresh(getConfigList(), true)
-            end
-            Notify("Deleted", "File dihapus", 2)
+            UpdateDropdown(configDropdown, getConfigList())
+            selectedConfigToLoad = ""
+            Notify("Deleted", "File config telah dihapus", 2)
         end
     end
 })
