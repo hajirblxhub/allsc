@@ -1252,7 +1252,8 @@ local configNameInput = ""
 local selectedConfigToLoad = ""
 
 local function getConfigList()
-    local files = listfiles("NoxiusConfigs")
+    local success, files = pcall(listfiles, "NoxiusConfigs")
+    if not success then return {} end
     local configs = {}
     for _, file in ipairs(files) do
         if file:sub(-5) == ".json" then
@@ -1263,20 +1264,7 @@ local function getConfigList()
     return configs
 end
 
-local function UpdateDropdown(dropdown, list)
-    if not dropdown then return end
-    if dropdown.Refresh then
-        dropdown:Refresh(list, true)
-    elseif dropdown.SetOptions then
-        dropdown:SetOptions(list)
-    elseif dropdown.Update then
-        dropdown:Update(list)
-    elseif dropdown.SetValues then
-        dropdown:SetValues(list)
-    end
-end
-
-local configDropdown = SecConfig:AddDropdown({
+local configPicker = SecConfig:AddPicker({
     Name = "Select Config",
     Options = getConfigList(),
     Default = "",
@@ -1285,7 +1273,7 @@ local configDropdown = SecConfig:AddDropdown({
     end
 })
 
-local configInput = SecConfig:AddInput({
+local configInput = SecConfig:AddTextBox({
     Name = "Config Name",
     Default = "",
     Placeholder = "Ketik nama config...",
@@ -1300,30 +1288,25 @@ SecConfig:AddButton({
     Title = "Save Config",
     Callback = function()
         local name = (configNameInput ~= "" and configNameInput) or selectedConfigToLoad
-        
         if name == "" then 
-            return Notify("Error", "Isi nama config dulu!", 3) 
+            return Notify("Config", "Isi nama config dulu!") 
         end
 
         local fileName = "NoxiusConfigs/" .. name .. ".json"
         
         pcall(function()
-            if SaveAllConfig then
-                SaveAllConfig(fileName)
-            else
-                -- Fallback jika SaveAllConfig tidak ada
-                if ConfigData then
-                    writefile(fileName, game:GetService("HttpService"):JSONEncode(ConfigData))
-                end
+            if SaveAllConfig then 
+                SaveAllConfig(fileName) 
             end
-            
             if SaveConfig then 
                 SaveConfig("NoxiusUI_" .. name) 
             end
         end)
 
-        UpdateDropdown(configDropdown, getConfigList())
-        Notify("Success", "Config '" .. name .. "' disimpan!", 2)
+        if configPicker and configPicker.UpdatePicker then
+            configPicker:UpdatePicker(getConfigList())
+        end
+        Notify("Config", "Berhasil menyimpan: " .. name)
     end
 })
 
@@ -1331,48 +1314,44 @@ SecConfig:AddButton({
     Title = "Load Config",
     Callback = function()
         if selectedConfigToLoad == "" then 
-            return Notify("Error", "Pilih config dulu!", 3) 
+            return Notify("Config", "Pilih config dulu!") 
         end
-
+        
         local fileName = "NoxiusConfigs/" .. selectedConfigToLoad .. ".json"
 
         pcall(function()
-            if isfile(fileName) then
-                if LoadConfig then
-                    LoadConfig(fileName)
-                end
-                
-                if LoadConfigFromFile then
-                    LoadConfigFromFile("NoxiusUI_" .. selectedConfigToLoad)
-                end
+            if isfile(fileName) and LoadConfig then
+                LoadConfig(fileName)
+            end
+            if LoadConfigFromFile then
+                LoadConfigFromFile("NoxiusUI_" .. selectedConfigToLoad)
             end
         end)
-
-        Notify("Success", "Config '" .. selectedConfigToLoad .. "' dimuat!", 2)
+        Notify("Config", "Berhasil memuat: " .. selectedConfigToLoad)
     end
 })
 
 SecConfig:AddButton({
     Title = "Refresh List",
     Callback = function()
-        UpdateDropdown(configDropdown, getConfigList())
-        Notify("System", "List config diperbarui", 2)
+        if configPicker and configPicker.UpdatePicker then
+            configPicker:UpdatePicker(getConfigList())
+            Notify("Config", "List diperbarui!")
+        end
     end
 })
 
 SecConfig:AddButton({
     Title = "Delete Config",
     Callback = function()
-        if selectedConfigToLoad == "" then 
-            return Notify("Error", "Pilih config yang mau dihapus!", 3)
-        end
-        
+        if selectedConfigToLoad == "" then return end
         local fileName = "NoxiusConfigs/" .. selectedConfigToLoad .. ".json"
         if isfile(fileName) then
-            delfile(fileName)
-            UpdateDropdown(configDropdown, getConfigList())
-            selectedConfigToLoad = ""
-            Notify("Deleted", "File config telah dihapus", 2)
+            pcall(delfile, fileName)
+            if configPicker and configPicker.UpdatePicker then
+                configPicker:UpdatePicker(getConfigList())
+            end
+            Notify("Config", "File berhasil dihapus!")
         end
     end
 })
